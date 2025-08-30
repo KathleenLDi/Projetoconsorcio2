@@ -113,29 +113,247 @@ document.addEventListener('DOMContentLoaded', () => {
     contatoLinks.forEach(a => a.addEventListener('click', onClickContato));
   }
 
-  // Slider do HERO (opcional, se tiver estrutura)
-  (function initHeroSlider() {
-    const elImg = document.getElementById('hero-slide');
-    const dotsWrap = document.querySelector('.hero-dots');
-    if (!elImg || !dotsWrap) return;
-    // ... (mantém código original do slider)
-  })();
-
-  // Slider de produtos (opcional, se tiver estrutura)
   (function initProductSlider() {
-    // ... (mantém código original)
+    const slider = document.querySelector('.prod-slider');
+    const track = document.querySelector('.prod-track');
+    const dotsWrap = document.querySelector('.prod-dots');
+    const prev = document.querySelector('.prod-prev');
+    const next = document.querySelector('.prod-next');
+    if (!slider || !track || !dotsWrap) return;
+
+    const slides = Array.from(track.querySelectorAll('.prod-slide'));
+    if (!slides.length) return;
+
+    let idx = slides.findIndex(s => s.classList.contains('active'));
+    if (idx < 0) idx = 0;
+
+    function show(i) {
+      idx = (i % slides.length + slides.length) % slides.length;
+      slides.forEach((s, k) => s.classList.toggle('active', k === idx));
+      const dots = Array.from(dotsWrap.querySelectorAll('button'));
+      dots.forEach((d, k) => d.classList.toggle('active', k === idx));
+    }
+    function buildDots() {
+      dotsWrap.innerHTML = '';
+      slides.forEach((_, i) => {
+        const b = document.createElement('button');
+        if (i === idx) b.classList.add('active');
+        b.addEventListener('click', () => show(i));
+        dotsWrap.appendChild(b);
+      });
+    }
+
+    prev?.addEventListener('click', () => show(idx - 1));
+    next?.addEventListener('click', () => show(idx + 1));
+    buildDots();
+    show(idx);
+
+    // autoplay com pausa no hover
+    let timer = setInterval(() => show(idx + 1), 4500);
+    slider.addEventListener('mouseenter', () => { clearInterval(timer); });
+    slider.addEventListener('mouseleave', () => { timer = setInterval(() => show(idx + 1), 4500); });
   })();
 
-  // Depoimentos
+  // Depoimentos: alterna automaticamente
   const card = document.querySelector('.testimonial-card');
   if (card) {
-    // ... (mantém código original)
+    const items = Array.from(card.querySelectorAll('.testimonial-items blockquote'));
+    const dotsWrap = card.querySelector('.testimonial-dots');
+    let idx = items.findIndex(el => el.classList.contains('active'));
+    if (idx < 0) idx = 0;
+
+    if (dotsWrap) {
+      dotsWrap.innerHTML = '';
+      items.forEach((_, i) => {
+        const b = document.createElement('button');
+        if (i === idx) b.classList.add('active');
+        b.addEventListener('click', () => show(i));
+        dotsWrap.appendChild(b);
+      });
+    }
+
+    function show(i) {
+      items.forEach((el, k) => el.classList.toggle('active', k === i));
+      const dots = Array.from(card.querySelectorAll('.testimonial-dots button'));
+      dots.forEach((d, k) => d.classList.toggle('active', k === i));
+      idx = i;
+    }
+
+    setInterval(() => show((idx + 1) % items.length), 4500);
   }
 
-  // Slider por card (promo-media)
-  (function initCardMediaSliders() {
-    // ... (mantém código original)
-  })();
+// Slider por card (promo-media)
+function onReady(fn){ if(document.readyState!=='loading'){ fn(); } else { document.addEventListener('DOMContentLoaded', fn); } }
+
+onReady(function initCardMediaSliders() {
+  const sliders = Array.from(document.querySelectorAll('.promo-card .media-slider'));
+  if (!sliders.length) return;
+
+  sliders.forEach((slider) => {
+    const track = slider.querySelector('.media-track');
+    const dotsWrap = slider.querySelector('.media-dots');
+    const prev = slider.querySelector('.media-prev');
+    const next = slider.querySelector('.media-next');
+    if (!track || !dotsWrap) return;
+
+    function getType(sl) {
+      const card = sl.closest('.promo-card');
+      const prefix = card?.dataset?.mediaPrefix;
+      const mapAlt = { carro: 'Carro', casa: 'Casa', caminhao: 'Caminhão' };
+      return prefix ? {
+        key: prefix,
+        alt: mapAlt[prefix] || prefix,
+        assets: card.dataset.assetsPath || 'assets',
+        max: parseInt(card.dataset.max || '6', 10) // <= MAIS RÁPIDO
+      } : null;
+    }
+
+    // Checa TODAS as extensões do mesmo índice em paralelo e retorna a primeira que existir
+    function probeIndex(base, i) {
+      const EXTS = ['webp','jpg','jpeg','png','WEBP','JPG','JPEG','PNG'];
+      const TIMEOUT_MS = 1200;
+      return new Promise((resolve) => {
+        let settled = false;
+        const timer = setTimeout(() => { if (!settled){ settled = true; resolve(null); } }, TIMEOUT_MS);
+
+        const tryOne = (ext) => new Promise((res) => {
+          const img = new Image();
+          img.onload = () => res({ src: `${base}_${i}.${ext}`, alt: i });
+          img.onerror = () => res(null);
+          img.referrerPolicy = 'no-referrer';
+          img.decoding = 'async';
+          img.src = `${base}_${i}.${ext}`;
+        });
+
+        Promise.all(EXTS.map(tryOne)).then(results => {
+          if (settled) return;
+          clearTimeout(timer);
+          const hit = results.find(Boolean);
+          settled = true;
+          resolve(hit ? { src: hit.src } : null);
+        });
+      });
+    }
+
+    async function tryBuildFromPattern() {
+      const info = getType(slider);
+      if (!info) return [];
+
+      const base = `${info.assets}/${info.key}`;
+      const found = [];
+
+      for (let i = 1; i <= info.max; i++) {
+        // tenta _i.(webp|jpg|jpeg|png) em paralelo
+        // eslint-disable-next-line no-await-in-loop
+        const hit = await probeIndex(base, i);
+        if (!hit) {
+          // primeiro buraco interrompe (assumimos sequência contínua)
+          if (i > 1) break;
+          else continue;
+        }
+        found.push({ src: hit.src, alt: `${info.alt} ${i}` });
+      }
+      return found;
+    }
+
+    function setSlides(list) {
+      track.innerHTML = '';
+      list.forEach((it, i) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'media-slide' + (i === 0 ? ' active' : '');
+        wrap.innerHTML = `<img src="${it.src}" alt="${it.alt || ''}" loading="lazy" decoding="async">`;
+        track.appendChild(wrap);
+      });
+      // garante que controles apareçam após montar
+      prev && (prev.style.display = '');
+      next && (next.style.display = '');
+      dotsWrap.style.display = '';
+    }
+
+    // duplica a 1ª só se houver exatamente 1 imagem
+    function ensureAtLeastTwo(list) {
+      if (list.length === 1) return [list[0], { src: list[0].src, alt: list[0].alt || '' }];
+      return list;
+    }
+
+    let slides = [];
+    let idx = 0;
+
+    (async () => {
+      const found = await tryBuildFromPattern();
+
+      if (!found.length) {
+        // fallback ultra-rápido: tenta <prefix>_1.png direto (evita “sem nada” se rede oscila)
+        const info = getType(slider);
+        if (info) {
+          setSlides([{ src: `${info.assets}/${info.key}_1.png`, alt: `${info.alt} 1` }]);
+        }
+      } else {
+        setSlides(ensureAtLeastTwo(found));
+      }
+
+      slides = Array.from(track.querySelectorAll('.media-slide'));
+      buildDots();
+      attachControls();
+      show(0);
+      attachAutoplay();
+    })();
+
+    function show(i) {
+      if (!slides.length) return;
+      idx = (i % slides.length + slides.length) % slides.length;
+      slides.forEach((s, k) => s.classList.toggle('active', k === idx));
+      const dots = Array.from(dotsWrap.querySelectorAll('button'));
+      dots.forEach((d, k) => d.classList.toggle('active', k === idx));
+    }
+
+    function buildDots() {
+      const count = track.querySelectorAll('.media-slide').length;
+      dotsWrap.innerHTML = '';
+      for (let i = 0; i < count; i++) {
+        const b = document.createElement('button');
+        if (i === idx) b.classList.add('active');
+        b.addEventListener('click', () => show(i));
+        dotsWrap.appendChild(b);
+      }
+    }
+
+    function attachControls() {
+      prev?.addEventListener('click', () => show(idx - 1));
+      next?.addEventListener('click', () => show(idx + 1));
+      slider.addEventListener('keydown', (ev) => {
+        if (ev.key === 'ArrowLeft') { ev.preventDefault(); show(idx - 1); }
+        if (ev.key === 'ArrowRight') { ev.preventDefault(); show(idx + 1); }
+      });
+    }
+
+    function attachAutoplay() {
+      slides = Array.from(track.querySelectorAll('.media-slide'));
+      if (slides.length <= 1) {
+        prev && (prev.style.display = 'none');
+        next && (next.style.display = 'none');
+        dotsWrap.style.display = 'none';
+        return;
+      }
+      let timer = setInterval(() => show(idx + 1), 4000);
+
+      slider.addEventListener('mouseenter', () => clearInterval(timer));
+      slider.addEventListener('mouseleave', () => { clearInterval(timer); timer = setInterval(() => show(idx + 1), 4000); });
+
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach(({ isIntersecting }) => {
+          clearInterval(timer);
+          if (isIntersecting) timer = setInterval(() => show(idx + 1), 4000);
+        });
+      }, { threshold: 0.1 });
+
+      const article = slider.closest('.promo-card') || slider;
+      io.observe(article);
+    }
+  });
+});
+
+
 
   // --- Máscara de moeda (BRL) no campo valor
   const el = (id) => document.getElementById(id);
@@ -255,7 +473,7 @@ function enviarEmail() {
 
   const endpoint = 'https://formsubmit.co/ajax/' + encodeURIComponent('rsintermediacoesltdaofc@gmail.com');
   const payload = {
-    _subject: 'Novo contato - R&S Intermediacoes',
+    _subject: 'Novo contato - RS Intermediacoes',
     _template: 'table',
     _captcha: 'false',
     Nome: nome,
