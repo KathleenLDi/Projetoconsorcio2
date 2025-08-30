@@ -564,18 +564,6 @@ section h2 {
   gap: 2rem;
 }
 
-/* Marca d'água com a logo no fundo do hero */
-.hero::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background: url('assets/logo_2.png') no-repeat center;
-  background-size: min(60%, 520px);
-  opacity: .08;
-}
-
 .hero>* {
   position: relative;
   z-index: 1
