@@ -1359,3 +1359,17 @@ footer {
     --nav-offset: 60px; /* altura real da nav no mobile */
   }
 }
+/* Garante respiro do conteúdo abaixo da nav no mobile */
+@media (max-width: 768px) {
+  #hero.hero--split {
+    padding-top: calc(var(--nav-offset) + 8px);
+  }
+}
+
+/* Empurra os balões um pouco mais pra baixo no mobile
+   (não ficam colados ao menu hambúrguer) */
+@media (max-width: 768px) {
+  .balloon-nav {
+    top: calc(var(--nav-offset) + 56px);
+  }
+}

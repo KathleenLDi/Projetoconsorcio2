@@ -456,6 +456,15 @@ onReady(function initCardMediaSliders() {
   })();
 
 }); // fim do DOMContentLoaded
+// === Ajuste dinâmico do offset da nav ===
+function updateNavOffset() {
+  const nav = document.querySelector('nav');
+  if (!nav) return;
+  const h = Math.round(nav.getBoundingClientRect().height);
+  document.documentElement.style.setProperty('--nav-offset', h + 'px');
+}
+window.addEventListener('load', updateNavOffset);
+window.addEventListener('resize', updateNavOffset);
 
 // ===== Contato -> envia via FormSubmit =====
 function enviarEmail() {
