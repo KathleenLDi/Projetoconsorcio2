@@ -1373,3 +1373,13 @@ footer {
     top: calc(var(--nav-offset) + 56px);
   }
 }
+/* Compensa a altura da navbar para qualquer âncora (#id) */
+html { 
+  scroll-padding-top: var(--nav-offset);
+}
+/* Empurra os balões um pouco mais para baixo no mobile */
+@media (max-width: 768px) {
+  .balloon-nav {
+    top: calc(var(--nav-offset) + 64px);
+  }
+}
