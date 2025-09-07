@@ -30,6 +30,15 @@ body {
   line-height: 1.6;
 }
 
+/* Container base para seções (garante largura e padding consistentes, inclusive no mobile) */
+.section {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem 16px;
+  box-sizing: border-box;
+}
+
 /* ===== OVERLAYS (Benefícios / Simular) ===== */
 .overlay-panel {
   position: fixed;
@@ -661,11 +670,20 @@ section h2 {
 
 /* ===== SOBRE NÓS ===== */
 .about {
-  background: #fff;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem
+  max-width: 1100px;
+  /* ou outro valor adequado ao seu layout */
+  width: 100%;
+  margin: 0 auto;
+  padding: 4rem 2rem;
+  /* opcional: garante espaçamento lateral em telas pequenas */
+  box-sizing: border-box;
 }
+.about-text,
+.features {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 
 .about-text {
   text-align: center;
@@ -826,6 +844,17 @@ section h2 {
 .sim-form {
   max-width: 980px;
   margin: 0 auto
+}
+
+/* Ajustes finais para a seção Sobre no mobile */
+.about {
+  position: relative;
+  z-index: 1; /* evita sobreposição de elementos fixos/flutuantes */
+}
+
+/* Esconde atalhos flutuantes em telas muito estreitas para não cobrirem o conteúdo */
+@media (max-width: 560px) {
+  .balloon-nav { display: none; }
 }
 
 .sim-grid {
